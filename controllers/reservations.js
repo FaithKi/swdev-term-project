@@ -1,127 +1,179 @@
 const Reservation = require('../models/Reservation');
-const Massageshop = require('../models/Massageshop')
+const Massageshop = require('../models/Massageshop');
 
-//@desc     Get all massageshops
-//@route    GET /api/v1/massageshops
-//@access   Public
-exports.getMassageshops = async (req,res,next) => {
+// @desc     Get all reservations
+// @route    GET /api/v1/reservations
+// @access   Public
+exports.getReservations = async (req, res, next) => {
     let query;
 
-    const reqQuery = {...req.query};
-    const removeFields = ['select','sort','page','limit'];
-    removeFields.forEach(param=>delete reqQuery[param]);
-    console.log(reqQuery)
-
-    let queryStr = JSON.stringify(reqQuery);
-    queryStr = queryStr.replace(/\b(gt|gte|le|lte|in)\b/g, match=>`$${match}`);
-    query = Massageshop.find(JSON.parse(queryStr)).populate("reservations");
-
-    if(req.query.select) {
-        const fields = req.query.select.split(',').join(' ');
-        query = query.select(fields);
-    }
-    if(req.query.sort) {
-        const sortBy = req.query.sort.split(',').join(" ");
-        query = query.sort(sortBy);
+    if (req.user.role !== 'admin') {
+        query = Reservation.find({ user: req.user.id }).populate({
+            path: 'massage_shop',
+            select: 'name telephone'
+        });
     } else {
-        query = query.sort('-createdAt');
+        if (req.params.massageshopId) {
+            query = Reservation.find({ massage_shop: req.params.massageshopId }).populate({
+                path: 'massage_shop',
+                select: 'name telephone'
+            });
+        } else {
+            query = Reservation.find().populate({
+                path: 'massage_shop',
+                select: 'name telephone'
+            });
+        }
     }
-    const page = parseInt(req.query.page,10) || 1;
-    const limit = parseInt(req.query.limit,10) || 25;
-    const startIndex = (page-1)*limit;
-    const endIndex = page*limit;
-    const total = await Massageshop.countDocuments();
-    query = query.skip(startIndex).limit(limit);
 
     try {
-        const massageshops = await query;
+        const reservations = await query;
 
-        const pagination = {};
+        res.status(200).json({
+            success: true,
+            count: reservations.length,
+            data: reservations
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ success: false, message: "Cannot find reservations" });
+    }
+};
 
-        if(endIndex<total) {
-            pagination.next = {
-                page:page+1,
-                limit
-            }
-        }
-        if(startIndex>0) {
-            pagination.prev = {
-                page:page-1,
-                limit
-            }
+// @desc     Get single reservation
+// @route    GET /api/v1/reservations/:id
+// @access   Public
+exports.getReservation = async (req, res, next) => {
+    try {
+        const reservation = await Reservation.findById(req.params.id).populate({
+            path: 'massage_shop',
+            select: 'name address telephone'
+        });
+
+        if (!reservation) {
+            return res.status(404).json({ success: false, message: `No reservation with ID ${req.params.id}` });
         }
 
         res.status(200).json({
             success: true,
-            count: massageshops.length,
-            data: massageshops
+            data: reservation
         });
-    } catch(err) {
-        res.status(400).json({success:false});
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ success: false, message: "Cannot find reservation" });
     }
 };
 
-//@desc     Get single massageshops
-//@route    GET /api/v1/massageshops/:id
-//@access   Public
-exports.getMassageshop = async (req,res,next) => {
+// @desc     Add reservation
+// @route    POST /api/v1/massageshops/:massageshopId/reservations
+// @access   Private
+exports.addReservation = async (req, res, next) => {
     try {
-        const massageshop = await Massageshop.findById(req.params.id);
-        
-        if(!massageshop) {
-            return res.status(400).json({success:false});
+        req.body.massage_shop = req.params.massageshopId;
+
+        const massageshop = await Massageshop.findById(req.params.massageshopId);
+        if (!massageshop) {
+            return res.status(404).json({
+                success: false,
+                message: `No massageshop with ID ${req.params.massageshopId}`
+            });
         }
+
+        req.body.user = req.user.id;
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const existingReservations = await Reservation.find({
+            user: req.user.id,
+            createdAt: { $gte: todayStart, $lte: todayEnd }
+        });
+
+        if (existingReservations.length >= 3 && req.user.role !== 'admin') {
+            return res.status(400).json({
+                success: false,
+                message: `User ${req.user.id} already has 3 reservations today`
+            });
+        }
+
+        const reservation = await Reservation.create(req.body);
+
         res.status(200).json({
             success: true,
-            data: massageshop
+            data: reservation
         });
-    } catch(err) {
-        res.status(400).json({success:false})
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ success: false, message: "Cannot create reservation" });
     }
 };
 
-//@desc     Create new massageshops
-//@route    POST /api/v1/massageshops
-//@access   Private
-exports.createMassageshop = async (req,res,next) => {
-    const massageshop = await Massageshop.create(req.body);
-    res.status(201).json({
-        success: true,
-        data: massageshop
-    });
-};
-
-//@desc     Update massageshops
-//@route    PUT /api/v1/massageshops/:id
-//@access   Private
-exports.updateMassageshop = async (req,res,next) => {
+// @desc     Update reservation
+// @route    PUT /api/v1/reservations/:id
+// @access   Private
+exports.updateReservation = async (req, res, next) => {
     try {
-        const massageshop = await Massageshop.findByIdAndUpdate(req.params.id, req.body, {
+        let reservation = await Reservation.findById(req.params.id);
+
+        if (!reservation) {
+            return res.status(404).json({
+                success: false,
+                message: `No reservation with ID ${req.params.id}`
+            });
+        }
+
+        if (reservation.user.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(401).json({
+                success: false,
+                message: `User ${req.user.id} is not authorized to update this reservation`
+            });
+        }
+
+        reservation = await Reservation.findByIdAndUpdate(req.params.id, req.body, {
             new: true,
             runValidators: true
         });
-        if(!massageshop) {
-            res.status(400).json({success:false});
-        }
-        res.status(200).json({success:true, data:massageshop});
-    } catch(err) {
-        res.status(400).json({success:false});
+
+        res.status(200).json({
+            success: true,
+            data: reservation
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ success: false, message: "Cannot update reservation" });
     }
 };
 
-//@desc     Delete massageshops
-//@route    DELETE /api/v1/massageshops/:id
-//@access   Private
-exports.deleteMassageshop = async (req,res,next) => {
+// @desc     Delete reservation
+// @route    DELETE /api/v1/reservations/:id
+// @access   Private
+exports.deleteReservation = async (req, res, next) => {
     try {
-        const massageshop = await Massageshop.findById(req.params.id);
-        if(!massageshop) {
-            res.status(404).json({success:false,message:`Massageshop not found with id of ${req.params.id}`});
+        const reservation = await Reservation.findById(req.params.id);
+
+        if (!reservation) {
+            return res.status(404).json({
+                success: false,
+                message: `No reservation with ID ${req.params.id}`
+            });
         }
-        await Reservation.deleteMany({massageshop:req.params.id});
-        await Massageshop.deleteOne({_id:req.params.id})
-        res.status(200).json({success:true, data:{}});
-    } catch(err) {
-        res.status(400).json({success:false});
+
+        if (reservation.user.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(401).json({
+                success: false,
+                message: `User ${req.user.id} is not authorized to delete this reservation`
+            });
+        }
+
+        await reservation.deleteOne();
+
+        res.status(200).json({
+            success: true,
+            data: {}
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ success: false, message: "Cannot delete reservation" });
     }
 };

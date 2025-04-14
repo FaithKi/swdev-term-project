@@ -11,15 +11,15 @@ const hpp = require('hpp');
 const swaggerJsDoc = require('swagger-jsdoc');
 const swaggerUI = require('swagger-ui-express');
 //Load env vars
-dotenv.config({path:'./config/config.env'});
+dotenv.config({ path: './config/config.env' });
 
 //Connect to dataase
 connectDB();
 
 //Route files
-const hospitals = require('./routes/hospitals');
+const massageshops = require('./routes/massageshops ');
 const auth = require('./routes/auth');
-const appointments = require('./routes/appointments');
+const reservations = require('./routes/reservations ');
 
 const app = express();
 app.use(cors());
@@ -40,8 +40,8 @@ app.use(xss());
 app.use(cookieParser());
 
 //Rate Limiting
-const limiter=rateLimit({
-    windowsMs: 10*60*1000,//10 mins
+const limiter = rateLimit({
+    windowsMs: 10 * 60 * 1000,//10 mins
     max: 100
 });
 app.use(limiter);
@@ -49,8 +49,8 @@ app.use(limiter);
 //Prevent param pollution
 app.use(hpp());
 
-const swaggerOptions={
-    swaggerDefinition:{
+const swaggerOptions = {
+    swaggerDefinition: {
         openapi: '3.0.0',
         info: {
             title: 'Library API',
@@ -63,22 +63,22 @@ const swaggerOptions={
             }
         ]
     },
-    apis:['./routes/*.js']
+    apis: ['./routes/*.js']
 };
-const swaggerDocs=swaggerJsDoc(swaggerOptions);
-app.use('/api-docs',swaggerUI.serve, swaggerUI.setup(swaggerDocs));
+const swaggerDocs = swaggerJsDoc(swaggerOptions);
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocs));
 
-app.use('/api/v1/hospitals',hospitals);
-app.use('/api/v1/auth',auth);
-app.use('/api/v1/appointments', appointments);
+app.use('/api/v1/massageshops', massageshops);
+app.use('/api/v1/auth', auth);
+app.use('/api/v1/reservations', reservations);
 
 const PORT = process.env.PORT || 5003;
 
 const server = app.listen(PORT, console.log('Server running in ', process.env.NODE_ENV, ' mode on port ', PORT));
 
 //Handle unhandled promise rejection
-process.on('unhandledRejection', (err,promise) => {
+process.on('unhandledRejection', (err, promise) => {
     console.log(`Error : ${err.message}`);
     //Close server & exit process
-    server.close(()=>process.exit(1));
+    server.close(() => process.exit(1));
 })
