@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Reservation = require('./Reservation');
 
 const UserSchema = new mongoose.Schema({
     name: {
@@ -34,30 +35,54 @@ const UserSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    level: {
+        type: Number,
+        default: 1
+    },
+    pointsToNextLevel: {
+        type: Number,
+        default: 100
+    },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
     createdAt: {
         type: Date,
         default: Date.now
     }
+}, {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
 
-//Encrypt password using bcrypt
+// Virtual field for user's reservations
+UserSchema.virtual("reservations", {
+    ref: "Reservation",
+    localField: "_id",
+    foreignField: "user",
+    justOne: false
+});
+
+// Encrypt password using bcrypt
 UserSchema.pre('save', async function (next) {
+    if (!this.isModified('password')) {
+        return next();
+    }
+
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    next();
 });
 
-//Sign JWT and return
+// Sign JWT and return
 UserSchema.methods.getSignedJwtToken = function () {
     return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRE
-    })
-}
+    });
+};
 
-//Match user entered password to hashed password in database
+// Match user entered password to hashed password in database
 UserSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
-}
+};
 
 module.exports = mongoose.model('User', UserSchema);

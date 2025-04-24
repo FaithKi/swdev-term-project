@@ -1,5 +1,6 @@
 const Reservation = require('../models/Reservation');
 const Massageshop = require('../models/Massageshop');
+const User = require('../models/User'); // ✅ Add this line
 
 // @desc     Get all reservations
 // @route    GET /api/v1/reservations
@@ -98,6 +99,11 @@ exports.addReservation = async (req, res, next) => {
         }
 
         const reservation = await Reservation.create(req.body);
+
+        // Add points after reservation
+        await User.findByIdAndUpdate(req.user.id, {
+            $inc: { current_point: 10 }
+        });
 
         res.status(200).json({
             success: true,

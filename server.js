@@ -20,6 +20,7 @@ connectDB();
 const massageshops = require('./routes/massageshops ');
 const auth = require('./routes/auth');
 const reservations = require('./routes/reservations ');
+const users = require('./routes/users');
 
 const app = express();
 app.use(cors());
@@ -71,6 +72,7 @@ app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocs));
 app.use('/api/v1/massageshops', massageshops);
 app.use('/api/v1/auth', auth);
 app.use('/api/v1/reservations', reservations);
+app.use('/api/v1/users', users);
 
 const PORT = process.env.PORT || 5003;
 
