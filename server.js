@@ -17,7 +17,7 @@ dotenv.config({ path: './config/config.env' });
 connectDB();
 
 //Route files
-const massageshops = require('./routes/massageshops ');
+const massageshops = require('./routes/massageshops');
 const auth = require('./routes/auth');
 const reservations = require('./routes/reservations ');
 const users = require('./routes/users');
