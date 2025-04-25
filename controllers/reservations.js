@@ -81,10 +81,7 @@ exports.addReservation = async (req, res, next) => {
         }
 
         req.body.user = req.user.id;
-        console.log("before", req.body.apptDate)
-        console.log(req.user)
         const apptDate = new Date(req.body.apptDate);
-        console.log("after", apptDate)
 
         const dayStart = new Date(apptDate);
         dayStart.setHours(0, 0, 0, 0);
@@ -94,6 +91,7 @@ exports.addReservation = async (req, res, next) => {
 
         const existingReservations = await Reservation.find({
             user: req.user.id,
+            createdAt: { $gte: new Date()}
         });
 
         if (existingReservations.length >= 3 && req.user.role !== 'admin') {
