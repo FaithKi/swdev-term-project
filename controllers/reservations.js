@@ -89,9 +89,14 @@ exports.addReservation = async (req, res, next) => {
         const dayEnd = new Date(apptDate);
         dayEnd.setHours(23, 59, 59, 999);
 
+
+        let today = new Date();
+
+        // Set the time to midnight (start of the day)
+        today.setHours(0, 0, 0, 0);
         const existingReservations = await Reservation.find({
             user: req.user.id,
-            createdAt: { $gte: new Date()}
+            createdAt: { $gte: today }
         });
 
         if (existingReservations.length >= 3 && req.user.role !== 'admin') {
