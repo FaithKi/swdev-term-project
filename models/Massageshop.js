@@ -27,6 +27,10 @@ const MassageshopSchema = new mongoose.Schema({
         type: Number,
         required: [true, 'Please specify number of massagers'],
         min: [1, 'There must be at least 1 massager']
+    },
+    basePrice: {
+        type: Number,
+        required: [true, 'Please specify the base price of one massage course'],
     }
 }, {
     toJSON: { virtuals: true },

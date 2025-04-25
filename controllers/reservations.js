@@ -81,33 +81,67 @@ exports.addReservation = async (req, res, next) => {
         }
 
         req.body.user = req.user.id;
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
+        console.log("before", req.body.apptDate)
+        console.log(req.user)
+        const apptDate = new Date(req.body.apptDate);
+        console.log("after", apptDate)
+
+        const dayStart = new Date(apptDate);
+        dayStart.setHours(0, 0, 0, 0);
+
+        const dayEnd = new Date(apptDate);
+        dayEnd.setHours(23, 59, 59, 999);
 
         const existingReservations = await Reservation.find({
             user: req.user.id,
-            createdAt: { $gte: todayStart, $lte: todayEnd }
         });
 
         if (existingReservations.length >= 3 && req.user.role !== 'admin') {
             return res.status(400).json({
                 success: false,
-                message: `User ${req.user.id} already has 3 reservations today`
+                message: `User ${req.user.id} already has 3 reservations.`
             });
         }
 
-        const reservation = await Reservation.create(req.body);
-
-        // Add points after reservation
-        await User.findByIdAndUpdate(req.user.id, {
-            $inc: { current_point: 10 }
+        const shopCurrentReservations = await Reservation.find({
+            massage_shop: req.body.massage_shop,
+            createdAt: { $gte: dayStart, $lte: dayEnd }
         });
+
+        if (shopCurrentReservations.length >= massageshop.numberOfMassagers) {
+            return res.status(400).json({
+                success: false,
+                message: `Massage shop ${req.body.massage_shop.name} cannot receive more reservations today.`
+            });
+        }
+
+        if(req.user.level < 6) {
+            if(req.user.pointsToNextLevel == 1) {
+                if(req.user.level == 5) {
+                    await User.findByIdAndUpdate(req.user.id, {
+                        pointsToNextLevel: -1,
+                        $inc: {level: 1}
+                    })
+                } else {
+                    await User.findByIdAndUpdate(req.user.id, {
+                        pointsToNextLevel: 10,
+                        $inc: {level: 1}
+                    })
+                }
+            } else {
+                await User.findByIdAndUpdate(req.user.id, {
+                    $dec: { pointsToNextLevel: 1 }
+                })
+            }
+        }
+
+        const reservation = await Reservation.create(req.body);
+        const price = massageshop.basePrice * (1 - (req.user.level - 1) * 0.05)
 
         res.status(200).json({
             success: true,
-            data: reservation
+            data: reservation,
+            price
         });
     } catch (error) {
         console.log(error);

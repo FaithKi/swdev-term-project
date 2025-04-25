@@ -18,7 +18,8 @@ const UserSchema = new mongoose.Schema({
         ]
     },
     telephone: {
-        type: String
+        type: String,
+        required: true
     },
     role: {
         type: String,
@@ -31,17 +32,13 @@ const UserSchema = new mongoose.Schema({
         minlength: 6,
         select: false
     },
-    current_point: {
-        type: Number,
-        default: 0
-    },
     level: {
         type: Number,
         default: 1
     },
     pointsToNextLevel: {
         type: Number,
-        default: 100
+        default: 10
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,

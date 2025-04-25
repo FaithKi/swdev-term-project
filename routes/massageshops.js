@@ -3,11 +3,11 @@ const { getMassageshops, getMassageshop, createMassageshop, updateMassageshop, d
 const { protect, authorize } = require('../middleware/auth');
 const { getMassageShopCoordinate } = require('../services/googlemap')
 
-const reservationRouter = require('./reservations');
+const { addReservation } = require('../controllers/reservations');
 
 const router = express.Router();
 
-router.use('/:massageshopId/reservations', reservationRouter);
+router.post('/:massageshopId/reservations',protect,authorize('admin','user'), addReservation);
 
 router.route('/:id/coord').get(getMassageShopCoordinate);
 

@@ -5,14 +5,15 @@ const User = require('../models/User');
 // @access  Public
 exports.register = async (req,res,next) => {
     try {
-        const {name, email, password, role} = req.body;
+        const {name, email, password, role, telephone} = req.body;
     
         //Create User
         const user = await User.create({
             name,
             email,
             password,
-            role
+            role,
+            telephone,
         });
 
         //Create token
@@ -91,6 +92,7 @@ const sendTokenResponse = (user, statusCode, res) => {
         _id:user._id,
         name: user.name,
         email:user.email, //end for frontend
+        telephone:user.telephone,
         token
     });
 }
